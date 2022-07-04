@@ -47,7 +47,7 @@ def send(socket, msg, value=None):
         if value:
             socket.sendall(value)
     except:
-        raise RuntimeError("Remove closed connection.")
+        raise RuntimeError("Remote closed connection.")
 
 
 def recv(socket):
