@@ -170,7 +170,7 @@ class Game:
                 cur += 1
 
     def move(self, pos, value) -> bool:
-        y = pos // self.h
+        y = pos // self.w
         x = pos % self.w
 
         # out of bounds?
