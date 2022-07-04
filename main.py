@@ -202,12 +202,15 @@ class Game:
         cur_x = ulx + 1
         for row in self.board:
             for col in row:
-                if self.symbol == col:
-                    self.screen.addstr(cur_y, cur_x, col, curses.color_pair(1))
-                elif col in SYMBOLS:
-                    self.screen.addstr(cur_y, cur_x, col, curses.color_pair(2))
-                else:
-                    self.screen.addstr(cur_y, cur_x, col)
+                try:
+                    if self.symbol == col:
+                        self.screen.addstr(cur_y, cur_x, col, curses.color_pair(1))
+                    elif col in SYMBOLS:
+                        self.screen.addstr(cur_y, cur_x, col, curses.color_pair(2))
+                    else:
+                        self.screen.addstr(cur_y, cur_x, col)
+                except curses.error:
+                    raise RuntimeError("Your terminal is too small to draw the board.")
                 cur_x += 1 + self.cell_width
             cur_y += 1
             cur_x = ulx + 1
@@ -286,11 +289,10 @@ class Game:
 
 def server(screen):
     # Computing the true max possible board size is complicated by the variable
-    # width of the move numbers. Instead, we pick reasonable upper limits, bounded
-    # by the actual size of the terminal. If the terminal is tiny, this will fail.
+    # width of the move numbers given a board size. Instead, we pick reasonable
+    # limits. If the terminal is tiny, this can fail (even w/in provided bounds).
     max_h, max_w = screen.getmaxyx()
-    # leave room for text prompts and border
-    max_h, max_w = min(max_h - 5, 16), min(max_w - 1, 16) 
+    max_h, max_w = min(max_h, 16), min(max_w, 16)
     w = get_number(
         screen,
         f"Enter board width [1, {max_w}]:",
@@ -334,10 +336,12 @@ def client(screen):
         h = int(params[0])
         w = int(params[1])
 
+        # this check doesn't guarantee rendering works, but it's better than nothing
         max_h, max_w = screen.getmaxyx()
-        max_h, max_w = max_h - 5, max_w - 1  # leave room for prompts and padding
-        if h >= max_h or w >= max_w:
-            raise ValueError(f"The server has a board size of {w} x {h}, but your terminal max is {max_w} x {max_h}.")
+        if h > max_h or w > max_w:
+            raise ValueError(
+                f"The server has a board size of {w} x {h}, but your terminal max is {max_w} x {max_h}."
+            )
 
         win_len = int(params[2])
         game = Game(screen, h, w, win_len)
