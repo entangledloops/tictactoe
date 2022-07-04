@@ -110,7 +110,9 @@ def get_number(screen, text, y=1, x=1, digits=3, lower_bound=1, upper_bound=None
             # convert back to string to discard leading 0s
             if len(str(x)) > digits:
                 raise ValueError()
-            if x < lower_bound or (upper_bound and x > upper_bound):
+            if (lower_bound is not None and x < lower_bound) or (
+                upper_bound is not None and x > upper_bound
+            ):
                 raise ValueError()
         except ValueError:
             if upper_bound:
@@ -296,12 +298,13 @@ class Game:
             tie = self.tie()
             if winner or tie:
                 self.screen.clear()
-                if tie:
-                    txt = "It's a tie."
-                elif self.symbol == symbol:
-                    txt = "You WIN!"
+                if winner:
+                    if self.symbol == symbol:
+                        txt = "You WIN!"
+                    else:
+                        txt = "You LOSE!"
                 else:
-                    txt = "You LOSE!"
+                    txt = "It's a tie."
                 self.draw(1, 1)
                 prompt(
                     self.screen, txt, self.h + 3, 1, clear=False, color=curses.A_REVERSE
@@ -332,9 +335,9 @@ def server(screen):
     )
     win_len = get_number(
         screen,
-        f"In-a-row to win [2, {max(w, h)}]:",
+        f"In-a-row to win [1, {max(w, h)}]:",
         digits=len(str(w * h)),
-        lower_bound=2,
+        lower_bound=1,
         upper_bound=max(w, h),
     )
     game = Game(screen, h, w, win_len)
