@@ -16,3 +16,9 @@ Tested with Python 3.10.5 and `windows-curses` 2.3.0.
 <p align="center">
   <img src="./img/screenshot.png">
 </p>
+
+To run, just do:
+
+```
+python3 main.py
+```
