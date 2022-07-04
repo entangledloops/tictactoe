@@ -184,14 +184,14 @@ class Game:
         self.board[y][x] = value
         return True
 
-    def tie(self) -> bool:
+    def is_tie(self) -> bool:
         for y in range(self.h):
             for x in range(self.w):
                 if self.board[y][x] not in SYMBOLS:
                     return False
         return True
 
-    def winner(self, symbol) -> bool:
+    def is_winner(self, symbol) -> bool:
         win_len = self.win_len
         win = [symbol for _ in range(win_len)]
         for y in range(1 + (self.h - win_len)):
@@ -287,6 +287,24 @@ class Game:
         self.screen.refresh()
         return True
 
+    def is_game_over(self):
+        winners = [self.is_winner(symbol) for symbol in SYMBOLS]
+        return any(winners) or self.is_tie()
+
+    def handle_game_over(self):
+        txt = "It's a tie."
+        for symbol in SYMBOLS:
+            if self.is_winner(symbol):
+                if self.symbol == symbol:
+                    txt = "You WIN!"
+                else:
+                    txt = "You LOSE!"
+                break
+        self.screen.clear()
+        self.draw(1, 1)
+        prompt(self.screen, txt, self.h + 3, 1, clear=False, color=curses.A_REVERSE)
+        self.setup(self.symbol)
+
     def play(self, socket, player_id, cur_player=0):
         self.socket = socket
         self.setup(SYMBOLS[player_id])
@@ -294,22 +312,8 @@ class Game:
             symbol = SYMBOLS[cur_player]
             if not self.take_turn(symbol):
                 break
-            winner = self.winner(symbol)
-            tie = self.tie()
-            if winner or tie:
-                self.screen.clear()
-                if winner:
-                    if self.symbol == symbol:
-                        txt = "You WIN!"
-                    else:
-                        txt = "You LOSE!"
-                else:
-                    txt = "It's a tie."
-                self.draw(1, 1)
-                prompt(
-                    self.screen, txt, self.h + 3, 1, clear=False, color=curses.A_REVERSE
-                )
-                self.setup(self.symbol)
+            if self.is_game_over():
+                self.handle_game_over()
 
             # alternate turns
             cur_player = 1 if 0 == cur_player else 0
