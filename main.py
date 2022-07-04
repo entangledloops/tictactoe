@@ -27,18 +27,27 @@ MSG_LEN = {
 
 
 def send(socket, msg, value=None):
-    socket.sendall(bytes([msg.value]))
-    if value:
-        socket.sendall(value)
+    try:
+        socket.sendall(bytes([msg.value]))
+        if value:
+            socket.sendall(value)
+    except:
+        raise RuntimeError("Remove closed connection.")
 
 
 def recv(socket):
-    msg = Msg(int(socket.recv(1)[0]))
-    value = None
-    msg_len = MSG_LEN[msg]
-    if msg_len:
-        value = socket.recv(msg_len)
-    return msg, value
+    try:
+        b = socket.recv(1)
+        if 0 == len(b):
+            raise
+        msg = Msg(int(b[0]))
+        value = None
+        msg_len = MSG_LEN[msg]
+        if msg_len:
+            value = socket.recv(msg_len)
+        return msg, value
+    except:
+        raise RuntimeError("Remote closed connection.")
 
 
 def get_input(screen, prompt, y, x, w, clear=True):
@@ -143,8 +152,8 @@ class Game:
                 cur += 1
 
     def move(self, pos, value) -> bool:
-        y = (pos - 1) // self.h
-        x = (pos - 1) % self.w
+        y = pos // self.h
+        x = pos % self.w
 
         # out of bounds?
         if y < 0 or y >= self.h or x < 0 or x >= self.w:
@@ -233,7 +242,7 @@ class Game:
                     send(self.socket, Msg.QUIT)
                     return False
                 try:
-                    pos = int(inputs)
+                    pos = int(inputs) - 1
                     if not self.move(pos, symbol):
                         raise ValueError()
                 except ValueError:
