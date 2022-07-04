@@ -102,13 +102,14 @@ def get_input(screen, prompt, y, x, w, clear=True):
     return inputs
 
 
-def get_number(screen, text, digits=3, lower_bound=1, upper_bound=None):
+def get_number(screen, text, y=1, x=1, digits=3, lower_bound=1, upper_bound=None):
     while 1:
-        x = get_input(screen, text, 1, 1, digits).strip()
+        x = get_input(screen, text, y, x, digits).strip()
         try:
-            if 0 == len(x) or len(x) > digits:
-                raise ValueError()
             x = int(x)
+            # convert back to string to discard leading 0s
+            if len(str(x)) > digits:
+                raise ValueError()
             if x < lower_bound or (upper_bound and x > upper_bound):
                 raise ValueError()
         except ValueError:
