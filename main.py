@@ -20,6 +20,7 @@ import socket
 from curses.textpad import Textbox, rectangle
 
 
+PADDING = 1
 PORT = 65019  # port to listen on
 SYMBOLS = ["X", "O"]
 
@@ -102,7 +103,9 @@ def get_input(screen, prompt, y, x, w, clear=True):
     return inputs
 
 
-def get_number(screen, text, y=1, x=1, digits=3, lower_bound=1, upper_bound=None):
+def get_number(
+    screen, text, y=PADDING, x=PADDING, digits=3, lower_bound=1, upper_bound=None
+):
     while 1:
         x = get_input(screen, text, y, x, digits).strip()
         try:
@@ -115,19 +118,21 @@ def get_number(screen, text, y=1, x=1, digits=3, lower_bound=1, upper_bound=None
             ):
                 raise ValueError()
         except ValueError:
-            if upper_bound:
+            if lower_bound and upper_bound:
                 prompt(
                     screen,
                     f"You must enter a number in the range [{lower_bound}, {upper_bound}].",
                 )
-            else:
+            elif lower_bound:
                 prompt(screen, f"Your number must be >= {lower_bound}.")
+            else:
+                prompt(screen, "Please enter a valid number.")
             continue
         break
     return x
 
 
-def prompt(screen, text, y=1, x=1, clear=True, wait=True, color=None):
+def prompt(screen, text, y=PADDING, x=PADDING, clear=True, wait=True, color=None):
     if clear:
         screen.clear()
     if color:
@@ -151,22 +156,24 @@ class Game:
         self.h = h
         self.w = w
         self.win_len = win_len
+        self.y = PADDING
+        self.x = PADDING
         self.n_cells = h * w
         self.cell_width = len(str(self.n_cells))
         self.board = []
-        for _ in range(h):
-            self.board.append([None for _ in range(self.w)])
         self.socket = None
         self.symbol = None
-
-    def setup(self, symbol):
-        self.symbol = symbol
+        self.setup_board()
         curses.init_pair(1, curses.COLOR_BLUE, curses.COLOR_BLACK)
         curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
+
+    def setup_board(self):
+        self.board.clear()
         cur = 1
         for row in range(self.h):
-            for col in range(self.w):
-                self.board[row][col] = str(cur)
+            self.board.append([])
+            for _ in range(self.w):
+                self.board[row].append(str(cur))
                 cur += 1
 
     def move(self, pos, value) -> bool:
@@ -216,8 +223,12 @@ class Game:
                         return True
         return False
 
-    def draw(self, uly, ulx):
+    def draw_board(self):
+        self.screen.clear()
+
         # draw border around board
+        uly = self.y
+        ulx = self.x
         lry = uly + self.h + 1
         lrx = ulx + (self.cell_width + 1) * self.w
         try:
@@ -225,67 +236,71 @@ class Game:
         except curses.error:
             pass  # ignore out of bounds rect
         # add all values to board
-        cur_y = uly + 1
-        cur_x = ulx + 1
+        y = uly + 1
+        x = ulx + 1
         for row in self.board:
             for col in row:
                 try:
                     if self.symbol == col:
-                        self.screen.addstr(cur_y, cur_x, col, curses.color_pair(1))
+                        self.screen.addstr(y, x, col, curses.color_pair(1))
                     elif col in SYMBOLS:
-                        self.screen.addstr(cur_y, cur_x, col, curses.color_pair(2))
+                        self.screen.addstr(y, x, col, curses.color_pair(2))
                     else:
-                        self.screen.addstr(cur_y, cur_x, col)
+                        self.screen.addstr(y, x, col)
                 except curses.error:
                     raise RuntimeError("Your terminal is too small to draw the board.")
-                cur_x += 1 + self.cell_width
-            cur_y += 1
-            cur_x = ulx + 1
+                x += 1 + self.cell_width
+            y += 1
+            x = ulx + 1
 
-    def take_turn(self, symbol) -> bool:
+    def my_turn(self):
         while 1:
-            self.screen.clear()
-            self.draw(1, 1)
-            # if it's my turn...
-            if symbol == self.symbol:
-                inputs = get_input(
-                    self.screen,
-                    "Enter your move (or 'q' to quit):",
-                    self.h + 3,
-                    1,
-                    self.cell_width,
-                    clear=False,
-                ).strip()
-                if "q" == inputs:
-                    send(self.socket, Msg.QUIT)
-                    return False
-                try:
-                    pos = int(inputs) - 1
-                    if not self.move(pos, symbol):
-                        raise ValueError()
-                except ValueError:
-                    prompt(self.screen, f"'{inputs}' is not a valid move.")
-                    continue
-                send(self.socket, Msg.MOVE, bytes([pos]))
-                break
-            else:
-                prompt(
-                    self.screen,
-                    "Waiting for opponent...",
-                    self.h + 3,
-                    1,
-                    wait=False,
-                    clear=False,
-                )
-                msg, value = recv(self.socket)
-                if Msg.QUIT == msg:
-                    return False
-                elif Msg.MOVE == msg:
-                    pos = int(value[0])
-                    self.move(pos, symbol)
-                break
+            inputs = get_input(
+                self.screen,
+                "Enter your move (or 'q' to quit):",
+                self.y + self.h + 2,
+                self.x,
+                self.cell_width,
+                clear=False,
+            ).strip()
+            if "q" == inputs:
+                send(self.socket, Msg.QUIT)
+                return False
+            try:
+                pos = int(inputs) - 1
+                if not self.move(pos, self.symbol):
+                    raise ValueError()
+            except ValueError:
+                prompt(self.screen, f"'{inputs}' is not a valid move.")
+                self.draw_board()
+                continue
+            send(self.socket, Msg.MOVE, bytes([pos]))
+            return True
+
+    def opponents_turn(self, symbol) -> bool:
+        prompt(
+            self.screen,
+            "Waiting for opponent...",
+            self.y + self.h + 2,
+            self.x,
+            wait=False,
+            clear=False,
+        )
+        msg, value = recv(self.socket)
+        if Msg.QUIT == msg:
+            return False
+        elif Msg.MOVE == msg:
+            pos = int(value[0])
+            self.move(pos, symbol)
         self.screen.refresh()
         return True
+
+    def take_turn(self, symbol) -> bool:
+        self.draw_board()  # render current board state
+        if self.symbol == symbol:
+            return self.my_turn()
+        else:
+            return self.opponents_turn(symbol)
 
     def is_game_over(self):
         winners = [self.is_winner(symbol) for symbol in SYMBOLS]
@@ -300,18 +315,25 @@ class Game:
                 else:
                     txt = "You LOSE!"
                 break
-        self.screen.clear()
-        self.draw(1, 1)
-        prompt(self.screen, txt, self.h + 3, 1, clear=False, color=curses.A_REVERSE)
-        self.setup(self.symbol)
+        prompt(
+            self.screen,
+            txt,
+            self.y + self.h + 2,
+            self.x,
+            clear=False,
+            color=curses.A_REVERSE,
+        )
+        self.setup_board()
 
     def play(self, socket, player_id, cur_player=0):
         self.socket = socket
-        self.setup(SYMBOLS[player_id])
+        self.symbol = SYMBOLS[player_id]
         while 1:
             symbol = SYMBOLS[cur_player]
             if not self.take_turn(symbol):
+                # if something goes wrong, just quit
                 break
+            self.draw_board()  # redraw the board after the move
             if self.is_game_over():
                 self.handle_game_over()
 
@@ -383,7 +405,9 @@ def client(screen):
 def main(stdscr):
     curses.curs_set(0)  # hide cursor
     while 1:
-        pressed = get_input(stdscr, "Are you hosting the game? (y/n/q)", 1, 1, 1)
+        pressed = get_input(
+            stdscr, "Are you hosting the game? (y/n/q)", PADDING, PADDING, 1
+        )
         if "y" == pressed:
             server(stdscr)
             break
