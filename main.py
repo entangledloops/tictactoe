@@ -76,6 +76,8 @@ def prompt(screen, text, y=PADDING, x=PADDING, clear=True, wait=True, color=None
     else:
         screen.addstr(y, x, text)
     if not clear:
+        # if the entire screen wasn't cleared, we should flush to end of line so
+        # there is no weird text overlap from a previous render
         screen.clrtoeol()
     if wait:
         screen.addstr(y + 1, x, "(Press any key to continue)")
@@ -94,8 +96,6 @@ def get_input(screen, text, y, x, w, clear=True) -> str:
     # if only inputting 1 char, just immediately return it
     if 1 == w:
         screen.addstr(y, x, text)
-        # if the entire screen wasn't cleared, we should flush to end of line so
-        # there is no weird text overlap from a previous render
         if not clear:
             screen.clrtoeol()
         return chr(screen.getch())
