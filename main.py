@@ -113,9 +113,7 @@ def get_input(screen, text, y, x, w, clear=True) -> str:
     # We use a custom validate to capture Enter and bail, rather than
     # waiting for the curses default of Ctrl+g
     def validate(ch):
-        if ord("\n") == ch:
-            return curses.ascii.BEL
-        return ch
+        return curses.ascii.BEL if ord("\n") == ch else ch
 
     box = Textbox(editwin)
     box.edit(validate=validate)
@@ -138,6 +136,7 @@ def get_int(
                 upper_bound is not None and inputs > upper_bound
             ):
                 raise ValueError()
+            return inputs
         except ValueError:
             if lower_bound and upper_bound:
                 prompt(
@@ -150,9 +149,6 @@ def get_int(
                 prompt(screen, f"Enter a valid number >= {upper_bound}.")
             else:
                 prompt(screen, "Enter a valid number.")
-            continue
-        break
-    return inputs
 
 
 class Game:
