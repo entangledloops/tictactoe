@@ -20,6 +20,8 @@ import socket
 from curses.textpad import Textbox, rectangle
 
 
+MY_COLOR = 1
+OPPONENT_COLOR = 2
 PADDING = 1
 PORT = 65019  # port to listen on
 SYMBOLS = ["X", "O"]
@@ -121,12 +123,14 @@ def get_number(
             if lower_bound and upper_bound:
                 prompt(
                     screen,
-                    f"You must enter a number in the range [{lower_bound}, {upper_bound}].",
+                    f"Enter a valid number in the range [{lower_bound}, {upper_bound}].",
                 )
             elif lower_bound:
-                prompt(screen, f"Your number must be >= {lower_bound}.")
+                prompt(screen, f"Enter a valid number <= {lower_bound}.")
+            elif upper_bound:
+                prompt(screen, f"Enter a valid number >= {upper_bound}.")
             else:
-                prompt(screen, "Please enter a valid number.")
+                prompt(screen, "Enter a valid number.")
             continue
         break
     return x
@@ -164,8 +168,8 @@ class Game:
         self.socket = None
         self.symbol = None
         self.setup_board()
-        curses.init_pair(1, curses.COLOR_BLUE, curses.COLOR_BLACK)
-        curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
+        curses.init_pair(MY_COLOR, curses.COLOR_BLUE, curses.COLOR_BLACK)
+        curses.init_pair(OPPONENT_COLOR, curses.COLOR_RED, curses.COLOR_BLACK)
 
     def setup_board(self):
         self.board.clear()
@@ -242,9 +246,9 @@ class Game:
             for col in row:
                 try:
                     if self.symbol == col:
-                        self.screen.addstr(y, x, col, curses.color_pair(1))
+                        self.screen.addstr(y, x, col, curses.color_pair(MY_COLOR))
                     elif col in SYMBOLS:
-                        self.screen.addstr(y, x, col, curses.color_pair(2))
+                        self.screen.addstr(y, x, col, curses.color_pair(OPPONENT_COLOR))
                     else:
                         self.screen.addstr(y, x, col)
                 except curses.error:
