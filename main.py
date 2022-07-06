@@ -165,8 +165,6 @@ class Game:
         self.socket = None
         self.symbol = None
         self.setup_board()
-        curses.init_pair(MY_COLOR, curses.COLOR_BLUE, curses.COLOR_BLACK)
-        curses.init_pair(OPPONENT_COLOR, curses.COLOR_RED, curses.COLOR_BLACK)
 
     def setup_board(self):
         self.board.clear()
@@ -389,7 +387,7 @@ def client(screen):
         s.connect((host, PORT))
         msg, params = recv(s)
         if msg is not Msg.NEW_GAME:
-            raise ValueError(f"Received unexpected message from server: {msg}.")
+            raise ValueError(f"Received unexpected message from server: {msg}")
         h = int(params[0])
         w = int(params[1])
 
@@ -407,6 +405,8 @@ def client(screen):
 
 def main(stdscr):
     curses.curs_set(0)  # hide cursor
+    curses.init_pair(MY_COLOR, curses.COLOR_BLUE, curses.COLOR_BLACK)
+    curses.init_pair(OPPONENT_COLOR, curses.COLOR_RED, curses.COLOR_BLACK)
     while 1:
         pressed = get_str(
             stdscr, "Are you hosting the game? (y/n/q)", PADDING, PADDING, 1
