@@ -88,7 +88,7 @@ def prompt(screen, text, y=PADDING, x=PADDING, clear=True, wait=True, color=None
         screen.getch()
 
 
-def get_input(screen, text, y, x, w, clear=True) -> str:
+def get_str(screen, text, y, x, w, clear=True) -> str:
     if clear:
         screen.clear()
     curses.flushinp()  # flush pending input
@@ -126,7 +126,7 @@ def get_int(
     screen, text, y=PADDING, x=PADDING, digits=3, lower_bound=1, upper_bound=None
 ) -> int:
     while 1:
-        inputs = get_input(screen, text, y, x, digits)
+        inputs = get_str(screen, text, y, x, digits)
         try:
             inputs = int(inputs)
             # convert back to string to discard leading 0s
@@ -258,7 +258,7 @@ class Game:
 
     def my_turn(self) -> bool:
         while 1:
-            inputs = get_input(
+            inputs = get_str(
                 self.screen,
                 "Enter your move (or 'q' to quit):",
                 self.y + self.h + 2,
@@ -382,7 +382,7 @@ def server(screen):
 
 
 def client(screen):
-    host = get_input(screen, "Enter server address:", PADDING, PADDING, 15)
+    host = get_str(screen, "Enter server address:", PADDING, PADDING, 15)
     prompt(screen, f"Connecting to {host}:{PORT}...", wait=False)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((host, PORT))
@@ -407,7 +407,7 @@ def client(screen):
 def main(stdscr):
     curses.curs_set(0)  # hide cursor
     while 1:
-        pressed = get_input(
+        pressed = get_str(
             stdscr, "Are you hosting the game? (y/n/q)", PADDING, PADDING, 1
         )
         if "y" == pressed:
