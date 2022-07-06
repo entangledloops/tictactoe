@@ -83,11 +83,6 @@ def get_input(screen, prompt, y, x, w, clear=True):
         screen.refresh()
         return chr(screen.getch())
 
-    def validate(ch):
-        if ord("\n") == ch:
-            return curses.ascii.BEL
-        return ch
-
     screen.addstr(y, x, prompt)
     if not clear:
         screen.clrtoeol()
@@ -97,6 +92,13 @@ def get_input(screen, prompt, y, x, w, clear=True):
     except curses.error:
         pass  # ignore out of bounds drawing
     screen.refresh()
+
+    # We use a custom validate to capture Enter and bail, rather than
+    # waiting for the curses default of Ctrl+g
+    def validate(ch):
+        if ord("\n") == ch:
+            return curses.ascii.BEL
+        return ch
 
     box = Textbox(editwin)
     box.edit(validate=validate)
