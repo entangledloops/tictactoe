@@ -157,7 +157,7 @@ def prompt(screen, text, y=PADDING, x=PADDING, clear=True, wait=True, color=None
 
 
 class Game:
-    def __init__(self, screen, h=3, w=3, win_len=3):
+    def __init__(self, screen, h, w, win_len):
         self.screen = screen
         self.h = h
         self.w = w
