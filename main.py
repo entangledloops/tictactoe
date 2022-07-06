@@ -347,7 +347,7 @@ def server(screen):
     # Computing the true max possible board size is complicated by the variable
     # width of the move numbers given a board size. Instead, we pick reasonable
     # limits. If the terminal is tiny, this can fail (even w/in provided bounds).
-    # Also, 16 * 16 = 256, the largest value we can send with our 1 byte protocol.
+    # Also, 16 * 16 = 256, the full range of values in our 1 byte move protocol.
     max_h, max_w = screen.getmaxyx()
     max_h, max_w = min(max_h, 16), min(max_w, 16)
     w = get_int(
