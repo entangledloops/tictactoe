@@ -119,14 +119,14 @@ def get_input(screen, text, y, x, w, clear=True) -> str:
     box.edit(validate=validate)
     inputs = box.gather()
 
-    return inputs
+    return inputs.strip()
 
 
 def get_int(
     screen, text, y=PADDING, x=PADDING, digits=3, lower_bound=1, upper_bound=None
 ) -> int:
     while 1:
-        inputs = get_input(screen, text, y, x, digits).strip()
+        inputs = get_input(screen, text, y, x, digits)
         try:
             inputs = int(inputs)
             # convert back to string to discard leading 0s
@@ -265,7 +265,7 @@ class Game:
                 self.x,
                 self.cell_width,
                 clear=False,
-            ).strip()
+            )
             if "q" == inputs:
                 send(self.socket, Msg.QUIT)
                 return False
@@ -382,7 +382,7 @@ def server(screen):
 
 
 def client(screen):
-    host = get_input(screen, "Enter server address:", PADDING, PADDING, 15).strip()
+    host = get_input(screen, "Enter server address:", PADDING, PADDING, 15)
     prompt(screen, f"Connecting to {host}:{PORT}...", wait=False)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((host, PORT))
