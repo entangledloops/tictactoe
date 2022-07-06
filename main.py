@@ -144,9 +144,9 @@ def get_int(
                     f"Enter a valid number in the range [{lower_bound}, {upper_bound}].",
                 )
             elif lower_bound:
-                prompt(screen, f"Enter a valid number <= {lower_bound}.")
+                prompt(screen, f"Enter a valid number >= {lower_bound}.")
             elif upper_bound:
-                prompt(screen, f"Enter a valid number >= {upper_bound}.")
+                prompt(screen, f"Enter a valid number <= {upper_bound}.")
             else:
                 prompt(screen, "Enter a valid number.")
 
