@@ -53,7 +53,7 @@ def send(socket, msg, value=None):
         raise RuntimeError("Remote closed connection.")
 
 
-def recv(socket):
+def recv(socket) -> tuple:
     try:
         b = socket.recv(1)
         if 0 == len(b):
@@ -68,7 +68,7 @@ def recv(socket):
         raise RuntimeError("Remote closed connection.")
 
 
-def get_input(screen, prompt, y, x, w, clear=True):
+def get_input(screen, prompt, y, x, w, clear=True) -> str:
     if clear:
         screen.clear()
     curses.flushinp()  # flush pending input
@@ -107,9 +107,9 @@ def get_input(screen, prompt, y, x, w, clear=True):
     return inputs
 
 
-def get_number(
+def get_int(
     screen, text, y=PADDING, x=PADDING, digits=3, lower_bound=1, upper_bound=None
-):
+) -> int:
     while 1:
         x = get_input(screen, text, y, x, digits).strip()
         try:
@@ -309,7 +309,7 @@ class Game:
         else:
             return self.opponents_turn(symbol)
 
-    def is_game_over(self):
+    def is_game_over(self) -> bool:
         winners = [self.is_winner(symbol) for symbol in SYMBOLS]
         return any(winners) or self.is_tie()
 
@@ -354,19 +354,19 @@ def server(screen):
     # limits. If the terminal is tiny, this can fail (even w/in provided bounds).
     max_h, max_w = screen.getmaxyx()
     max_h, max_w = min(max_h, 16), min(max_w, 16)
-    w = get_number(
+    w = get_int(
         screen,
         f"Enter board width [1, {max_w}]:",
         digits=len(str(max_w)),
         upper_bound=max_w,
     )
-    h = get_number(
+    h = get_int(
         screen,
         f"Enter board height [1, {max_h}]:",
         digits=len(str(max_h)),
         upper_bound=max_h,
     )
-    win_len = get_number(
+    win_len = get_int(
         screen,
         f"In-a-row to win [1, {max(w, h)}]:",
         digits=len(str(w * h)),
