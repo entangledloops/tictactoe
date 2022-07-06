@@ -253,6 +253,8 @@ class Game:
             y += 1
             x = ulx + 1
 
+        self.screen.refresh()
+
     def my_turn(self):
         while 1:
             inputs = get_input(
@@ -292,7 +294,6 @@ class Game:
         elif Msg.MOVE == msg:
             pos = int(value[0])
             self.move(pos, symbol)
-        self.screen.refresh()
         return True
 
     def take_turn(self, symbol) -> bool:
