@@ -259,7 +259,7 @@ class Game:
 
         self.screen.refresh()
 
-    def my_turn(self):
+    def my_turn(self) -> bool:
         while 1:
             inputs = get_input(
                 self.screen,
