@@ -303,7 +303,6 @@ class Game:
         return True
 
     def take_turn(self, symbol) -> bool:
-        self.draw_board()  # render current board state
         if self.symbol == symbol:
             return self.my_turn()
         else:
@@ -336,6 +335,7 @@ class Game:
         self.socket = socket
         self.symbol = SYMBOLS[player_id]
         while 1:
+            self.draw_board()  # render current board state
             symbol = SYMBOLS[cur_player]
             if not self.take_turn(symbol):
                 # if something goes wrong, just quit
