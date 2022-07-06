@@ -314,6 +314,7 @@ class Game:
                 else:
                     txt = "You LOSE!"
                 break
+        self.draw_board()  # show the final board state
         prompt(
             self.screen,
             txt,
@@ -333,7 +334,6 @@ class Game:
             if not self.take_turn(symbol):
                 # if something goes wrong, just quit
                 break
-            self.draw_board()  # redraw the board after the move
             if self.is_game_over():
                 self.handle_game_over()
 
