@@ -68,27 +68,44 @@ def recv(socket) -> tuple:
         raise RuntimeError("Remote closed connection.")
 
 
-def get_input(screen, prompt, y, x, w, clear=True) -> str:
+def prompt(screen, text, y=PADDING, x=PADDING, clear=True, wait=True, color=None):
+    if clear:
+        screen.clear()
+    if color:
+        screen.addstr(y, x, text, color)
+    else:
+        screen.addstr(y, x, text)
+    if not clear:
+        screen.clrtoeol()
+    if wait:
+        screen.addstr(y + 1, x, "(Press any key to continue)")
+        if not clear:
+            screen.clrtoeol()
+    screen.refresh()
+    if wait:
+        screen.getch()
+
+
+def get_input(screen, text, y, x, w, clear=True) -> str:
     if clear:
         screen.clear()
     curses.flushinp()  # flush pending input
 
     # if only inputting 1 char, just immediately return it
     if 1 == w:
-        screen.addstr(y, x, prompt)
+        screen.addstr(y, x, text)
         # if the entire screen wasn't cleared, we should flush to end of line so
         # there is no weird text overlap from a previous render
         if not clear:
             screen.clrtoeol()
-        screen.refresh()
         return chr(screen.getch())
 
-    screen.addstr(y, x, prompt)
+    screen.addstr(y, x, text)
     if not clear:
         screen.clrtoeol()
-    editwin = curses.newwin(1, 1 + w, y + 2, x + 1)
+    editwin = curses.newwin(1, w + 1, y + 2, x + 1)
     try:
-        rectangle(screen, y + 1, x, y + 2 + 1, x + 1 + w + 1)
+        rectangle(screen, y + 1, x, y + 3, x + w + 2)
     except curses.error:
         pass  # ignore out of bounds drawing
     screen.refresh()
@@ -111,14 +128,14 @@ def get_int(
     screen, text, y=PADDING, x=PADDING, digits=3, lower_bound=1, upper_bound=None
 ) -> int:
     while 1:
-        x = get_input(screen, text, y, x, digits).strip()
+        inputs = get_input(screen, text, y, x, digits).strip()
         try:
-            x = int(x)
+            inputs = int(inputs)
             # convert back to string to discard leading 0s
-            if len(str(x)) > digits:
+            if len(str(inputs)) > digits:
                 raise ValueError()
-            if (lower_bound is not None and x < lower_bound) or (
-                upper_bound is not None and x > upper_bound
+            if (lower_bound is not None and inputs < lower_bound) or (
+                upper_bound is not None and inputs > upper_bound
             ):
                 raise ValueError()
         except ValueError:
@@ -135,25 +152,7 @@ def get_int(
                 prompt(screen, "Enter a valid number.")
             continue
         break
-    return x
-
-
-def prompt(screen, text, y=PADDING, x=PADDING, clear=True, wait=True, color=None):
-    if clear:
-        screen.clear()
-    if color:
-        screen.addstr(y, x, text, color)
-    else:
-        screen.addstr(y, x, text)
-    if not clear:
-        screen.clrtoeol()
-    if wait:
-        screen.addstr(y + 1, x, "(Press any key to continue)")
-        if not clear:
-            screen.clrtoeol()
-    screen.refresh()
-    if wait:
-        screen.getch()
+    return inputs
 
 
 class Game:
@@ -387,7 +386,7 @@ def server(screen):
 
 
 def client(screen):
-    host = get_input(screen, "Enter server address:", 1, 1, 15).strip()
+    host = get_input(screen, "Enter server address:", PADDING, PADDING, 15).strip()
     prompt(screen, f"Connecting to {host}:{PORT}...", wait=False)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((host, PORT))
