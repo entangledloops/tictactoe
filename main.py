@@ -302,7 +302,7 @@ class Game:
             return self.opponents_turn(symbol)
 
     def is_game_over(self) -> bool:
-        winners = [self.is_winner(symbol) for symbol in SYMBOLS]
+        winners = (self.is_winner(symbol) for symbol in SYMBOLS)
         return any(winners) or self.is_tie()
 
     def handle_game_over(self):
@@ -330,8 +330,7 @@ class Game:
         self.symbol = SYMBOLS[player_id]
         while 1:
             self.draw_board()  # render current board state
-            symbol = SYMBOLS[cur_player]
-            if not self.take_turn(symbol):
+            if not self.take_turn(SYMBOLS[cur_player]):
                 # if something goes wrong, just quit
                 break
             if self.is_game_over():
