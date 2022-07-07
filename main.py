@@ -347,6 +347,7 @@ def server(screen):
     # Also, 16 * 16 = 256, the full range of values in our 1 byte move protocol.
     max_h, max_w = screen.getmaxyx()
     max_h, max_w = min(max_h, 16), min(max_w, 16)
+    max_dim = max(max_h, max_w)
     w = get_int(
         screen,
         f"Enter board width [1, {max_w}]:",
@@ -361,9 +362,9 @@ def server(screen):
     )
     win_len = get_int(
         screen,
-        f"In-a-row to win [1, {max(w, h)}]:",
-        digits=len(str(w * h)),
-        upper_bound=max(w, h),
+        f"In-a-row to win [1, {max_dim}]:",
+        digits=len(str(max_dim)),
+        upper_bound=max_dim,
     )
     game = Game(screen, h, w, win_len)
 
