@@ -363,7 +363,6 @@ def server(screen):
         screen,
         f"In-a-row to win [1, {max(w, h)}]:",
         digits=len(str(w * h)),
-        lower_bound=1,
         upper_bound=max(w, h),
     )
     game = Game(screen, h, w, win_len)
