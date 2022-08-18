@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import copy
 import curses
 import enum
 import socket
@@ -42,6 +43,16 @@ MSG_LEN = {
     Msg.MOVE: 1,
     Msg.QUIT: 0,
 }
+
+
+def get_next_symbol(symbol):
+    index = (SYMBOLS.index(symbol) + 1) % len(SYMBOLS)
+    return SYMBOLS[index]
+
+
+def get_prev_symbol(symbol):
+    index = SYMBOLS.index(symbol) - 1
+    return SYMBOLS[index]
 
 
 def send(socket, msg, value=None):
@@ -152,11 +163,12 @@ def get_int(
 
 
 class Game:
-    def __init__(self, screen, h, w, win_len):
+    def __init__(self, screen, h, w, win_len, human):
         self.screen = screen
         self.h = h
         self.w = w
         self.win_len = win_len
+        self.human = human
         self.y = PADDING
         self.x = PADDING
         self.n_cells = h * w
@@ -175,7 +187,10 @@ class Game:
                 self.board[row].append(str(cur))
                 cur += 1
 
-    def move(self, pos, value) -> bool:
+    def move(self, pos, symbol, board=None) -> bool:
+        if not board:
+            board = self.board
+
         y = pos // self.w
         x = pos % self.w
 
@@ -184,45 +199,54 @@ class Game:
             return False
 
         # is this cell already taken?
-        if self.board[y][x] in SYMBOLS:
+        if board[y][x] in SYMBOLS:
             return False
 
-        self.board[y][x] = value
+        board[y][x] = symbol
         return True
 
-    def is_tie(self) -> bool:
+    def is_tie(self, board=None) -> bool:
+        if not board:
+            board = self.board
         for y in range(self.h):
             for x in range(self.w):
-                if self.board[y][x] not in SYMBOLS:
+                if board[y][x] not in SYMBOLS:
                     return False
         return True
 
-    def is_winner(self, symbol) -> bool:
+    def is_winner(self, symbol, board=None) -> bool:
+        if not board:
+            board = self.board
         win_len = self.win_len
         win = [symbol for _ in range(win_len)]
-        for y in range(1 + (self.h - win_len)):
+        for y in range(self.h):
             for x in range(self.w):
                 # if there's room, check across row and diag
                 if (x + win_len) <= self.w:
-                    cur = [self.board[y][x + i] for i in range(win_len)]
+                    cur = [board[y][x + i] for i in range(win_len)]
                     if cur == win:
                         return True
                     # UL -> LR
-                    cur = [self.board[y + i][x + i] for i in range(win_len)]
-                    if cur == win:
-                        return True
+                    if (y + win_len) <= self.h:
+                        cur = [board[y + i][x + i] for i in range(win_len)]
+                        if cur == win:
+                            return True
                 # check col
-                cur = [self.board[y + i][x] for i in range(win_len)]
-                if cur == win:
-                    return True
-                # check diag UR -> LL
-                if (x + 1) >= win_len:
-                    cur = [self.board[y + i][x - i] for i in range(win_len)]
+                if (y + win_len) <= self.h:
+                    cur = [board[y + i][x] for i in range(win_len)]
                     if cur == win:
                         return True
+                    # UR -> LL
+                    if (x + 1) >= win_len:
+                        cur = [board[y + i][x - i] for i in range(win_len)]
+                        if cur == win:
+                            return True
         return False
 
-    def draw_board(self):
+    def draw_board(self, board=None):
+        if not board:
+            board = self.board
+
         self.screen.clear()
 
         # draw border around board
@@ -237,7 +261,7 @@ class Game:
         # add all values to board
         y = uly + 1
         x = ulx + 1
-        for row in self.board:
+        for row in board:
             for col in row:
                 try:
                     if self.symbol == col:
@@ -254,29 +278,121 @@ class Game:
 
         self.screen.refresh()
 
+    def count_empty_cells(self):
+        empty = 0
+        for y in range(self.h):
+            for x in range(self.w):
+                if self.board[y][x] not in SYMBOLS:
+                    empty += 1
+        return empty
+
+    def generate_boards(self, symbol, board=None):
+        """Generate all of the possible next moves on the board."""
+        if not board:
+            board = self.board
+        boards = []
+        for y in range(self.h):
+            for x in range(self.w):
+                if board[y][x] not in SYMBOLS:
+                    new_board = copy.deepcopy(board)
+                    new_board[y][x] = symbol
+                    boards.append(new_board)
+        return boards
+
+    def get_move(self, board_1, board_2):
+        """Given two board, return the first position where they differ."""
+        pos = 0
+        for y in range(self.h):
+            for x in range(self.w):
+                if board_1[y][x] != board_2[y][x]:
+                    return pos
+                pos += 1
+
+    def _minimax(self, board, prev_symbol, target_symbol, depth_limit=None, depth=0):
+        if self.is_winner(prev_symbol, board):
+            val = 1 if prev_symbol == target_symbol else -1
+            return val, None
+        elif self.is_tie(board):
+            return 0, None
+
+        # for now, default depth limit behavior is assume tie, as we can't be sure
+        # that this path will lead to victory or loss
+        if depth_limit and depth >= depth_limit:
+            return 0 if prev_symbol == target_symbol else 1, None
+
+        cur_symbol = get_next_symbol(prev_symbol)
+        boards = self.generate_boards(cur_symbol, board)
+        is_max_turn = cur_symbol == target_symbol
+        if is_max_turn:
+            max_val, max_board = -1, None
+            for b in boards:
+                val, board = self._minimax(
+                    b, cur_symbol, target_symbol, depth_limit, depth + 1
+                )
+                if val >= max_val:
+                    max_val, max_board = val, b
+                # best possible move found, quit early
+                if 1 == max_val:
+                    break
+            return max_val, max_board
+        else:
+            min_val, min_board = 1, None
+            for b in boards:
+                val, board = self._minimax(
+                    b, cur_symbol, target_symbol, depth_limit, depth + 1
+                )
+                if val <= min_val:
+                    min_val, min_board = val, b
+                # opponent best possible move found, quit early
+                if -1 == min_val:
+                    break
+            return min_val, min_board
+
+    def minimax(self):
+        """
+        This minimax alg. does not re-use work from prior iterations and is a 
+        minimal working implementation.
+
+        The idea for depth limit calc. below is to consider all possibilities
+        once the remaining empty board size is around the size of a typical
+        tic-tac-toe board. Anything above that, we depth-limit to prevent this
+        naive algorithm for blowing up time + memory.
+        """
+        depth_limit = None if self.count_empty_cells() < 10 else 3
+        prev_symbol = get_prev_symbol(self.symbol)
+        _, board = self._minimax(self.board, prev_symbol, self.symbol, depth_limit)
+        return self.get_move(self.board, board)
+
     def my_turn(self) -> bool:
-        while 1:
-            inputs = get_str(
-                self.screen,
-                "Enter your move (or 'q' to quit):",
-                self.y + self.h + 2,
-                self.x,
-                self.cell_width,
-                clear=False,
-            )
-            if "q" == inputs:
-                send(self.socket, Msg.QUIT)
-                return False
-            try:
-                pos = int(inputs) - 1
-                if not self.move(pos, self.symbol):
-                    raise ValueError()
-            except ValueError:
-                prompt(self.screen, f"'{inputs}' is not a valid move.")
-                self.draw_board()
-                continue
-            send(self.socket, Msg.MOVE, bytes([pos]))
-            return True
+        if self.human:
+            while 1:
+                inputs = get_str(
+                    self.screen,
+                    "Enter your move (or 'q' to quit):",
+                    self.y + self.h + 2,
+                    self.x,
+                    self.cell_width,
+                    clear=False,
+                )
+                if "q" == inputs:
+                    send(self.socket, Msg.QUIT)
+                    return False
+                try:
+                    pos = int(inputs) - 1
+                    if not self.move(pos, self.symbol):
+                        raise ValueError()
+                    break
+                except ValueError:
+                    prompt(self.screen, f"'{inputs}' is not a valid move.")
+                    self.draw_board()
+                    continue
+        else:
+            pos = self.minimax()
+            if not self.move(pos, self.symbol):
+                raise ValueError(f"AI picked an invalid move: {pos}")
+
+        send(self.socket, Msg.MOVE, bytes([pos]))
+        return True
 
     def opponents_turn(self, symbol) -> bool:
         prompt(
@@ -306,38 +422,39 @@ class Game:
         return any(winners) or self.is_tie()
 
     def handle_game_over(self):
-        txt = "It's a tie."
-        for symbol in SYMBOLS:
-            if self.is_winner(symbol):
-                if self.symbol == symbol:
-                    txt = "You WIN!"
-                else:
-                    txt = "You LOSE!"
-                break
-        self.draw_board()  # show the final board state
-        prompt(
-            self.screen,
-            txt,
-            self.y + self.h + 2,
-            self.x,
-            clear=False,
-            color=curses.A_REVERSE,
-        )
+        if self.human:
+            txt = "It's a tie."
+            for symbol in SYMBOLS:
+                if self.is_winner(symbol):
+                    if self.symbol == symbol:
+                        txt = "You WIN!"
+                    else:
+                        txt = "You LOSE!"
+                    break
+            self.draw_board()  # show the final board state
+            prompt(
+                self.screen,
+                txt,
+                self.y + self.h + 2,
+                self.x,
+                clear=False,
+                color=curses.A_REVERSE,
+            )
         self.setup_board()
 
-    def play(self, socket, player_id, cur_player=0):
+    def play(self, socket, player_id):
         self.socket = socket
         self.symbol = SYMBOLS[player_id]
+        cur_player = SYMBOLS[0]
         while 1:
             self.draw_board()  # render current board state
-            if not self.take_turn(SYMBOLS[cur_player]):
+            if not self.take_turn(cur_player):
                 # if something goes wrong, just quit
                 break
             if self.is_game_over():
                 self.handle_game_over()
-
             # alternate turns
-            cur_player = 1 if 0 == cur_player else 0
+            cur_player = get_next_symbol(cur_player)
 
 
 def server(screen):
@@ -366,8 +483,17 @@ def server(screen):
         digits=len(str(max_dim)),
         upper_bound=max_dim,
     )
-    game = Game(screen, h, w, win_len)
+    human = None
+    while human is None:
+        human = get_str(
+            screen, "Human player on this side? (y/n):", PADDING, PADDING, 1
+        ).lower()
+        if human not in ("y", "n"):
+            human = None
+        else:
+            human = True if "y" == human else False
 
+    game = Game(screen, h, w, win_len, human)
     host = ""
     prompt(screen, f"Listening on port {PORT}...", wait=False)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -398,7 +524,7 @@ def client(screen):
             )
 
         win_len = int(params[2])
-        game = Game(screen, h, w, win_len)
+        game = Game(screen, h, w, win_len, human=True)
         game.play(s, 1)
 
 
