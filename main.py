@@ -318,7 +318,7 @@ class Game:
         # for now, default depth limit behavior is assume tie, as we can't be sure
         # that this path will lead to victory or loss
         if depth_limit and depth >= depth_limit:
-            return 0 if prev_symbol == target_symbol else 1, None
+            return 0, None
 
         cur_symbol = get_next_symbol(prev_symbol)
         boards = self.generate_boards(cur_symbol, board)
